@@ -33,6 +33,9 @@ class Chain(models.Model):
         default=100
     )  # A lower number will indicate more relevance
     name = models.CharField(verbose_name="Chain name", max_length=255)
+    short_name = models.CharField(
+        verbose_name="EIP-3770 short name", max_length=255, unique=True
+    )
     description = models.CharField(max_length=255, blank=True)
     l2 = models.BooleanField()
     rpc_authentication = models.CharField(
@@ -50,8 +53,11 @@ class Chain(models.Model):
     currency_name = models.CharField(max_length=255)
     currency_symbol = models.CharField(max_length=255)
     currency_decimals = models.IntegerField(default=18)
-    currency_logo_uri = models.ImageField(upload_to=native_currency_path)
+    currency_logo_uri = models.ImageField(
+        upload_to=native_currency_path, max_length=255
+    )
     transaction_service_uri = models.URLField()
+    vpc_transaction_service_uri = models.URLField()
     theme_text_color = models.CharField(
         validators=[color_validator],
         max_length=9,

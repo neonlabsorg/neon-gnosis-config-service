@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.urls import reverse
 from faker import Faker
 from rest_framework.test import APITestCase
@@ -28,6 +30,7 @@ class ChainJsonPayloadFormatViewTests(APITestCase):
                 {
                     "chainId": str(gas_price.chain.id),
                     "chainName": chain.name,
+                    "shortName": chain.short_name,
                     "description": chain.description,
                     "l2": chain.l2,
                     "rpcUri": {
@@ -49,6 +52,7 @@ class ChainJsonPayloadFormatViewTests(APITestCase):
                         "logoUri": chain.currency_logo_uri.url,
                     },
                     "transactionService": chain.transaction_service_uri,
+                    "vpcTransactionService": chain.vpc_transaction_service_uri,
                     "theme": {
                         "textColor": chain.theme_text_color,
                         "backgroundColor": chain.theme_background_color,
@@ -134,6 +138,7 @@ class ChainDetailViewTests(APITestCase):
         json_response = {
             "chainId": str(chain.id),
             "chainName": chain.name,
+            "shortName": chain.short_name,
             "description": chain.description,
             "l2": chain.l2,
             "rpcUri": {
@@ -155,6 +160,7 @@ class ChainDetailViewTests(APITestCase):
                 "logoUri": chain.currency_logo_uri.url,
             },
             "transactionService": chain.transaction_service_uri,
+            "vpcTransactionService": chain.vpc_transaction_service_uri,
             "theme": {
                 "textColor": chain.theme_text_color,
                 "backgroundColor": chain.theme_background_color,
@@ -189,6 +195,7 @@ class ChainDetailViewTests(APITestCase):
         json_response = {
             "chain_id": str(chain.id),
             "chain_name": chain.name,
+            "short_name": chain.short_name,
             "description": chain.description,
             "l2": chain.l2,
             "rpc_uri": {
@@ -210,6 +217,7 @@ class ChainDetailViewTests(APITestCase):
                 "logo_uri": chain.currency_logo_uri.url,
             },
             "transaction_service": chain.transaction_service_uri,
+            "vpc_transaction_service": chain.vpc_transaction_service_uri,
             "theme": {
                 "text_color": chain.theme_text_color,
                 "background_color": chain.theme_background_color,
@@ -298,7 +306,9 @@ class ChainGasPriceTests(APITestCase):
                 "type": "oracle",
                 "uri": gas_price_50.oracle_uri,
                 "gas_parameter": gas_price_50.oracle_parameter,
-                "gwei_factor": str(gas_price_50.gwei_factor),
+                "gwei_factor": str(
+                    gas_price_50.gwei_factor.quantize(Decimal("1.000000000"))
+                ),
             },
             {
                 "type": "fixed",

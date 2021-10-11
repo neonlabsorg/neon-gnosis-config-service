@@ -81,6 +81,7 @@ class BlockExplorerUriTemplateSerializer(serializers.Serializer):
 class ChainSerializer(serializers.ModelSerializer):
     chain_id = serializers.CharField(source="id")
     chain_name = serializers.CharField(source="name")
+    short_name = serializers.CharField()
     rpc_uri = serializers.SerializerMethodField()
     safe_apps_rpc_uri = serializers.SerializerMethodField()
     block_explorer_uri_template = serializers.SerializerMethodField()
@@ -88,6 +89,7 @@ class ChainSerializer(serializers.ModelSerializer):
     transaction_service = serializers.URLField(
         source="transaction_service_uri", default=None
     )
+    vpc_transaction_service = serializers.URLField(source="vpc_transaction_service_uri")
     theme = serializers.SerializerMethodField()
     gas_price = serializers.SerializerMethodField()
     ens_registry_address = EthereumAddressField()
@@ -97,6 +99,7 @@ class ChainSerializer(serializers.ModelSerializer):
         fields = [
             "chain_id",
             "chain_name",
+            "short_name",
             "description",
             "l2",
             "rpc_uri",
@@ -104,6 +107,7 @@ class ChainSerializer(serializers.ModelSerializer):
             "block_explorer_uri_template",
             "native_currency",
             "transaction_service",
+            "vpc_transaction_service",
             "theme",
             "gas_price",
             "ens_registry_address",

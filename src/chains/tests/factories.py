@@ -14,6 +14,7 @@ class ChainFactory(DjangoModelFactory):
     id = factory.Sequence(lambda id: id)
     relevance = factory.Faker("pyint")
     name = factory.Faker("company")
+    short_name = factory.Faker("pystr", max_chars=255)
     description = factory.Faker("pystr", max_chars=255)
     l2 = factory.Faker("pybool")
     rpc_authentication = factory.lazy_attribute(
@@ -31,6 +32,7 @@ class ChainFactory(DjangoModelFactory):
     currency_decimals = factory.Faker("pyint")
     currency_logo_uri = factory.django.ImageField()
     transaction_service_uri = factory.Faker("url")
+    vpc_transaction_service_uri = factory.Faker("url")
     theme_text_color = factory.Faker("hex_color")
     theme_background_color = factory.Faker("hex_color")
     ens_registry_address = factory.LazyAttribute(
