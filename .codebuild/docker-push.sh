@@ -4,11 +4,12 @@
 repository=$1
 
 # Push Docker images to the repository
-for image in config_nginx config_web
+now=`date +%Y-%m-%d--%H-%M-%S`
+for image in config_nginx config_web 
 do
   docker tag $image:latest $repository-$image:latest
   docker push $repository-$image:latest
-  docker tag $image:latest $repository-$image:`date +%Y-%m-%d--%H-%M-%S`
-  docker push $repository-$image:`date +%Y-%m-%d--%H-%M-%S`
+  docker tag $image:latest $repository-$image:$now
+  docker push $repository-$image:$now
 done
 
