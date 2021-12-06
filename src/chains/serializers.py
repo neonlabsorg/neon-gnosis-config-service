@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import APIException
 from rest_framework.utils.serializer_helpers import ReturnDict
 
-from .models import Chain, GasPrice
+from .models import Chain, Feature, GasPrice, Wallet
 
 
 class GasPriceOracleSerializer(serializers.Serializer[GasPrice]):
@@ -74,9 +74,30 @@ class SafeAppsRpcUriSerializer(BaseRpcUriSerializer):
         return obj.safe_apps_rpc_uri
 
 
+class PublicRpcUriSerializer(BaseRpcUriSerializer):
+    def get_authentication(self, obj: Chain) -> str:
+        return obj.public_rpc_authentication
+
+    def get_rpc_value(self, obj: Chain) -> str:
+        return obj.public_rpc_uri
+
+
 class BlockExplorerUriTemplateSerializer(serializers.Serializer[Chain]):
     address = serializers.URLField(source="block_explorer_uri_address_template")
     tx_hash = serializers.URLField(source="block_explorer_uri_tx_hash_template")
+    api = serializers.URLField(source="block_explorer_uri_api_template")
+
+
+class FeatureSerializer(serializers.Serializer[Feature]):
+    @staticmethod
+    def to_representation(instance: Feature) -> str:
+        return instance.key
+
+
+class WalletSerializer(serializers.Serializer[Wallet]):
+    @staticmethod
+    def to_representation(instance: Wallet) -> str:
+        return instance.key
 
 
 class ChainSerializer(serializers.ModelSerializer[Chain]):
@@ -85,6 +106,7 @@ class ChainSerializer(serializers.ModelSerializer[Chain]):
     short_name = serializers.CharField()
     rpc_uri = serializers.SerializerMethodField()
     safe_apps_rpc_uri = serializers.SerializerMethodField()
+    public_rpc_uri = serializers.SerializerMethodField()
     block_explorer_uri_template = serializers.SerializerMethodField()
     native_currency = serializers.SerializerMethodField()
     transaction_service = serializers.URLField(
@@ -94,6 +116,8 @@ class ChainSerializer(serializers.ModelSerializer[Chain]):
     theme = serializers.SerializerMethodField()
     gas_price = serializers.SerializerMethodField()
     ens_registry_address = EthereumAddressField()
+    disabled_wallets = serializers.SerializerMethodField()
+    features = serializers.SerializerMethodField()
 
     class Meta:
         model = Chain
@@ -105,6 +129,7 @@ class ChainSerializer(serializers.ModelSerializer[Chain]):
             "l2",
             "rpc_uri",
             "safe_apps_rpc_uri",
+            "public_rpc_uri",
             "block_explorer_uri_template",
             "native_currency",
             "transaction_service",
@@ -113,6 +138,8 @@ class ChainSerializer(serializers.ModelSerializer[Chain]):
             "gas_price",
             "ens_registry_address",
             "recommended_master_copy_version",
+            "disabled_wallets",
+            "features",
         ]
 
     @staticmethod
@@ -136,6 +163,11 @@ class ChainSerializer(serializers.ModelSerializer[Chain]):
         return RpcUriSerializer(obj).data
 
     @staticmethod
+    @swagger_serializer_method(serializer_or_field=BaseRpcUriSerializer)  # type: ignore[misc]
+    def get_public_rpc_uri(obj: Chain) -> ReturnDict:
+        return PublicRpcUriSerializer(obj).data
+
+    @staticmethod
     @swagger_serializer_method(serializer_or_field=BlockExplorerUriTemplateSerializer)  # type: ignore[misc]
     def get_block_explorer_uri_template(obj: Chain) -> ReturnDict:
         return BlockExplorerUriTemplateSerializer(obj).data
@@ -144,3 +176,13 @@ class ChainSerializer(serializers.ModelSerializer[Chain]):
     def get_gas_price(self, instance) -> ReturnDict:  # type: ignore[no-untyped-def]
         ranked_gas_prices = instance.gasprice_set.all().order_by("rank")
         return GasPriceSerializer(ranked_gas_prices, many=True).data
+
+    @swagger_serializer_method(serializer_or_field=WalletSerializer)  # type: ignore[misc]
+    def get_disabled_wallets(self, instance) -> ReturnDict:  # type: ignore[no-untyped-def]
+        disabled_wallets = instance.get_disabled_wallets().order_by("key")
+        return WalletSerializer(disabled_wallets, many=True).data
+
+    @swagger_serializer_method(serializer_or_field=FeatureSerializer)  # type: ignore[misc]
+    def get_features(self, instance) -> ReturnDict:  # type: ignore[no-untyped-def]
+        enabled_features = instance.feature_set.all().order_by("key")
+        return FeatureSerializer(enabled_features, many=True).data

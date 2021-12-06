@@ -4,6 +4,7 @@ import re
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models import QuerySet
 from gnosis.eth.django.models import EthereumAddressField, Uint256Field
 
 HEX_ARGB_REGEX = re.compile("^#[0-9a-fA-F]{6}$")
@@ -48,8 +49,15 @@ class Chain(models.Model):
         default=RpcAuthentication.NO_AUTHENTICATION,
     )
     safe_apps_rpc_uri = models.URLField(default="")
+    public_rpc_authentication = models.CharField(
+        max_length=255,
+        choices=RpcAuthentication.choices,
+        default=RpcAuthentication.NO_AUTHENTICATION,
+    )
+    public_rpc_uri = models.URLField()
     block_explorer_uri_address_template = models.URLField()
     block_explorer_uri_tx_hash_template = models.URLField()
+    block_explorer_uri_api_template = models.URLField()
     currency_name = models.CharField(max_length=255)
     currency_symbol = models.CharField(max_length=255)
     currency_decimals = models.IntegerField(default=18)
@@ -75,6 +83,12 @@ class Chain(models.Model):
     recommended_master_copy_version = models.CharField(
         max_length=255, validators=[sem_ver_validator]
     )
+
+    def get_disabled_wallets(self) -> QuerySet["Wallet"]:
+        all_wallets = Wallet.objects.all()
+        enabled_wallets = self.wallet_set.all()
+
+        return all_wallets.difference(enabled_wallets)
 
     def __str__(self) -> str:
         return f"{self.name} | chain_id={self.id}"
@@ -113,3 +127,33 @@ class GasPrice(models.Model):
             raise ValidationError(
                 {"oracle_parameter": "The oracle parameter should be set"}
             )
+
+
+class Wallet(models.Model):
+    # A wallet can be part of multiple Chains and a Chain can have multiple Wallets
+    chains = models.ManyToManyField(
+        Chain, blank=True, help_text="Chains where this wallet is enabled."
+    )
+    key = models.CharField(
+        unique=True,
+        max_length=255,
+        help_text="The unique name/key that identifies this wallet",
+    )
+
+    def __str__(self) -> str:
+        return f"Wallet: {self.key}"
+
+
+class Feature(models.Model):
+    # A feature can be enabled for multiple Chains and a Chain can have multiple features enabled
+    chains = models.ManyToManyField(
+        Chain, blank=True, help_text="Chains where this feature is enabled."
+    )
+    key = models.CharField(
+        unique=True,
+        max_length=255,
+        help_text="The unique name/key that identifies this feature",
+    )
+
+    def __str__(self) -> str:
+        return f"Chain Feature: {self.key}"

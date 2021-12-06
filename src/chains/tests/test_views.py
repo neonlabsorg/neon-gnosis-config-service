@@ -5,7 +5,7 @@ from django.urls import reverse
 from faker import Faker
 from rest_framework.test import APITestCase
 
-from .factories import ChainFactory, GasPriceFactory
+from .factories import ChainFactory, FeatureFactory, GasPriceFactory, WalletFactory
 
 
 class EmptyChainsListViewTests(APITestCase):
@@ -47,9 +47,14 @@ class ChainJsonPayloadFormatViewTests(APITestCase):
                         "authentication": chain.safe_apps_rpc_authentication,
                         "value": chain.safe_apps_rpc_uri,
                     },
+                    "publicRpcUri": {
+                        "authentication": chain.public_rpc_authentication,
+                        "value": chain.public_rpc_uri,
+                    },
                     "blockExplorerUriTemplate": {
                         "address": chain.block_explorer_uri_address_template,
                         "txHash": chain.block_explorer_uri_tx_hash_template,
+                        "api": chain.block_explorer_uri_api_template,
                     },
                     "nativeCurrency": {
                         "name": chain.currency_name,
@@ -71,6 +76,8 @@ class ChainJsonPayloadFormatViewTests(APITestCase):
                     ],
                     "ensRegistryAddress": chain.ens_registry_address,
                     "recommendedMasterCopyVersion": chain.recommended_master_copy_version,
+                    "disabledWallets": [],
+                    "features": [],
                 }
             ],
         }
@@ -155,9 +162,14 @@ class ChainDetailViewTests(APITestCase):
                 "authentication": chain.safe_apps_rpc_authentication,
                 "value": chain.safe_apps_rpc_uri,
             },
+            "publicRpcUri": {
+                "authentication": chain.public_rpc_authentication,
+                "value": chain.public_rpc_uri,
+            },
             "blockExplorerUriTemplate": {
                 "address": chain.block_explorer_uri_address_template,
                 "txHash": chain.block_explorer_uri_tx_hash_template,
+                "api": chain.block_explorer_uri_api_template,
             },
             "nativeCurrency": {
                 "name": chain.currency_name,
@@ -179,6 +191,8 @@ class ChainDetailViewTests(APITestCase):
             ],
             "ensRegistryAddress": chain.ens_registry_address,
             "recommendedMasterCopyVersion": chain.recommended_master_copy_version,
+            "disabledWallets": [],
+            "features": [],
         }
 
         response = self.client.get(path=url, data=None, format="json")
@@ -194,54 +208,19 @@ class ChainDetailViewTests(APITestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_match(self) -> None:
-        chain = ChainFactory.create(id=1)
-        gas_price = GasPriceFactory.create(chain=chain)
-        url = reverse("v1:chains:detail", args=[1])
-        json_response = {
-            "chainId": str(chain.id),
-            "chainName": chain.name,
-            "shortName": chain.short_name,
-            "description": chain.description,
-            "l2": chain.l2,
-            "rpcUri": {
-                "authentication": chain.rpc_authentication,
-                "value": chain.rpc_uri,
-            },
-            "safeAppsRpcUri": {
-                "authentication": chain.safe_apps_rpc_authentication,
-                "value": chain.safe_apps_rpc_uri,
-            },
-            "blockExplorerUriTemplate": {
-                "address": chain.block_explorer_uri_address_template,
-                "txHash": chain.block_explorer_uri_tx_hash_template,
-            },
-            "nativeCurrency": {
-                "name": chain.currency_name,
-                "symbol": chain.currency_symbol,
-                "decimals": chain.currency_decimals,
-                "logoUri": chain.currency_logo_uri.url,
-            },
-            "transactionService": chain.transaction_service_uri,
-            "vpcTransactionService": chain.vpc_transaction_service_uri,
-            "theme": {
-                "textColor": chain.theme_text_color,
-                "backgroundColor": chain.theme_background_color,
-            },
-            "gasPrice": [
-                {
-                    "type": "fixed",
-                    "weiValue": str(gas_price.fixed_wei_value),
-                }
-            ],
-            "ensRegistryAddress": chain.ens_registry_address,
-            "recommendedMasterCopyVersion": chain.recommended_master_copy_version,
-        }
+    def test_by_short_name(self) -> None:
+        ChainFactory.create(id=1, short_name="eth")
+        url_by_id = reverse("v1:chains:detail", args=[1])
+        url_by_short_name = reverse("v1:chains:detail_by_short_name", args=["eth"])
 
-        response = self.client.get(path=url, data=None, format="json")
+        response_by_id = self.client.get(path=url_by_id, data=None, format="json")
+        response_by_short_name = self.client.get(
+            path=url_by_short_name, data=None, format="json"
+        )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), json_response)
+        self.assertEqual(response_by_id.status_code, 200)
+        self.assertEqual(response_by_short_name.status_code, 200)
+        self.assertEqual(response_by_id.json(), response_by_short_name.json())
 
 
 class ChainsListViewRelevanceTests(APITestCase):
@@ -410,3 +389,77 @@ class ChainGasPriceTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["gasPrice"], expected_oracle_json_payload)
+
+
+class WalletTests(APITestCase):
+    def test_wallet_with_no_chains_show_as_disabled(self) -> None:
+        ChainFactory.create(id=1)
+        wallet = WalletFactory.create(chains=())
+        url = reverse("v1:chains:detail", args=[1])
+
+        response = self.client.get(path=url, data=None, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["disabledWallets"], [wallet.key])
+
+    def test_multiple_disabled_wallets_name_sorting(self) -> None:
+        ChainFactory.create(id=1)
+        wallet_1 = WalletFactory.create(key="zWallet", chains=())
+        wallet_2 = WalletFactory.create(key="gWallet", chains=())
+        wallet_3 = WalletFactory.create(key="aWallet", chains=())
+        url = reverse("v1:chains:detail", args=[1])
+
+        response = self.client.get(path=url, data=None, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["disabledWallets"],
+            [wallet_3.key, wallet_2.key, wallet_1.key],
+        )
+
+    def test_wallet_with_chains_does_not_show(self) -> None:
+        chain = ChainFactory.create(id=1)
+        WalletFactory.create(chains=(chain,))
+        url = reverse("v1:chains:detail", args=[1])
+
+        response = self.client.get(path=url, data=None, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["disabledWallets"], [])
+
+
+class FeatureTests(APITestCase):
+    def test_feature_disabled_for_chain(self) -> None:
+        ChainFactory.create(id=1)
+        feature = FeatureFactory.create(chains=())
+        url = reverse("v1:chains:detail", args=[1])
+
+        response = self.client.get(path=url, data=None, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(feature.key not in response.json()["features"])
+
+    def test_feature_enabled_for_chain(self) -> None:
+        chain = ChainFactory.create(id=1)
+        feature = FeatureFactory.create(chains=(chain,))
+        url = reverse("v1:chains:detail", args=[1])
+
+        response = self.client.get(path=url, data=None, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(feature.key in response.json()["features"])
+
+    def test__multiple_features_sorting(self) -> None:
+        chain = ChainFactory.create(id=1)
+        feature_1 = FeatureFactory.create(key="zFeature", chains=(chain,))
+        feature_2 = FeatureFactory.create(key="gFeature", chains=(chain,))
+        feature_3 = FeatureFactory.create(key="aFeature", chains=(chain,))
+        url = reverse("v1:chains:detail", args=[1])
+
+        response = self.client.get(path=url, data=None, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["features"],
+            [feature_3.key, feature_2.key, feature_1.key],
+        )

@@ -4,7 +4,7 @@ import factory
 import web3
 from factory.django import DjangoModelFactory
 
-from ..models import Chain, GasPrice
+from ..models import Chain, Feature, GasPrice, Wallet
 
 
 class ChainFactory(DjangoModelFactory):  # type: ignore[misc]
@@ -25,8 +25,13 @@ class ChainFactory(DjangoModelFactory):  # type: ignore[misc]
         lambda o: random.choice(list(Chain.RpcAuthentication))
     )
     safe_apps_rpc_uri = factory.Faker("url")
+    public_rpc_authentication = factory.lazy_attribute(
+        lambda o: random.choice(list(Chain.RpcAuthentication))
+    )
+    public_rpc_uri = factory.Faker("url")
     block_explorer_uri_address_template = factory.Faker("url")
     block_explorer_uri_tx_hash_template = factory.Faker("url")
+    block_explorer_uri_api_template = factory.Faker("url")
     currency_name = factory.Faker("cryptocurrency_name")
     currency_symbol = factory.Faker("cryptocurrency_code")
     currency_decimals = factory.Faker("pyint")
@@ -53,3 +58,37 @@ class GasPriceFactory(DjangoModelFactory):  # type: ignore[misc]
     )
     fixed_wei_value = factory.Faker("pyint")
     rank = factory.Faker("pyint")
+
+
+class WalletFactory(DjangoModelFactory):  # type: ignore[misc]
+    class Meta:
+        model = Wallet
+
+    key = factory.Faker("company")
+
+    @factory.post_generation
+    def chains(self, create, extracted, **kwargs):  # type: ignore[no-untyped-def] # decorator is untyped
+        if not create:
+            # Simple build, do nothing.
+            return
+
+        if extracted:
+            # A list of chains were passed in, use them
+            for chain in extracted:
+                self.chains.add(chain)
+
+
+class FeatureFactory(DjangoModelFactory):  # type: ignore[misc]
+    class Meta:
+        model = Feature
+
+    key = factory.Faker("company")
+
+    @factory.post_generation
+    def chains(self, create, extracted, **kwargs):  # type: ignore[no-untyped-def] # decorator is untyped
+        if not create:
+            return
+
+        if extracted:
+            for chain in extracted:
+                self.chains.add(chain)
