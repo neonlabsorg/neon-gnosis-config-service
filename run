@@ -21,6 +21,11 @@ function _dc {
 
 # -----------------------------------------------------------------------------
 
+function up {
+  # Starting the development environment
+  docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+}
+
 function cmd {
   # Run any command you want in the web container
   _dc web "${@}"
@@ -35,6 +40,10 @@ function manage {
   fi
 
   cmd python src/manage.py "${@}"
+}
+
+function loadchain {
+    cmd python src/manage.py loaddata chain.json
 }
 
 function help {

@@ -64,6 +64,61 @@ python src/manage.py runserver
 ```
 
 
+#### b) with Docker
+
+1. Override the docker-compose for local development – by default the Django application won't reload when the codebase changes (restarting the images is required).
+In order to see our changes without restarting the docker images:
+   
+```shell
+cp docker-compose.override.yml.example docker-compose.override.yml
+```
+
+2. Set the mount point to `/app` in the `.env` file
+
+```dotenv
+DOCKER_WEB_VOLUME=.:/app
+```
+
+You need to configure the network that you want to use also. You can create it manually by running this command:
+```cmd
+docker network create moonbase-net # or whatever name than you want
+```
+
+After that edit the env file.
+```dotenv
+DOCKER_NETWORK_NAME=moonbase-net
+```
+
+3. Launch images
+
+```shell
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+or 
+```shell
+./run up
+```
+
+This will start the Nginx proxy server, the `safe-config-service` and a postgres database. Nginx exposes the port `8080` to the host which is the port used to interact with the application.
+
+Once you have the images up and running the service can be reached via `localhost:8080`.
+
+4. `./run` script
+
+The `./run` script is meant to be used as an utility to interact with the running image. You can execute `./run help` to see the available commands.
+
+Example: if you want to issue a command to the image which is running the Django service from your host you can do the following:
+
+```shell
+./run manage <django-command>
+```
+
+5. If it's the first time that you build the container it's probable that there is a need to load the chain's information into the database.
+
+```shell
+./run loadchain
+```
+
 ## Development Tools
 
 The project uses a variety of tools to make sure that the styling, health and correctness are validated on each change.
