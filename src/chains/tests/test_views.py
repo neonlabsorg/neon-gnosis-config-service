@@ -1,6 +1,8 @@
 from decimal import Decimal
 from typing import Any
 
+import factory
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 from faker import Faker
 from rest_framework.test import APITestCase
@@ -119,11 +121,11 @@ class ChainPaginationViewTests(APITestCase):
         self.assertEqual(response.json()["count"], 101)
         self.assertEqual(
             response.json()["next"],
-            "http://testserver/api/v1/chains/?limit=100&offset=100",
+            "http://testserver/api/v1/chains/?limit=20&offset=20",
         )
         self.assertEqual(response.json()["previous"], None)
         # returned items should still be equal to max_limit
-        self.assertEqual(len(response.json()["results"]), 100)
+        self.assertEqual(len(response.json()["results"]), 20)
 
     def test_offset_greater_than_count(self) -> None:
         ChainFactory.create_batch(21)
@@ -257,6 +259,29 @@ class ChainsEnsRegistryTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["ensRegistryAddress"], None)
+
+
+class ChainCurrencyLogoTests(APITestCase):
+    def test_image_max_size_validation(self) -> None:
+        chain = ChainFactory.create(
+            currency_logo_uri=factory.django.ImageField(width=512, height=512)
+        )
+
+        chain.full_clean()  # should not rise any exception
+
+    def test_image_width_greater_than_512(self) -> None:
+        with self.assertRaises(ValidationError):
+            chain = ChainFactory.create(
+                currency_logo_uri=factory.django.ImageField(width=513, height=50)
+            )
+            chain.full_clean()
+
+    def test_image_height_greater_than_512(self) -> None:
+        with self.assertRaises(ValidationError):
+            chain = ChainFactory.create(
+                currency_logo_uri=factory.django.ImageField(width=50, height=513)
+            )
+            chain.full_clean()
 
 
 class ChainGasPriceTests(APITestCase):
