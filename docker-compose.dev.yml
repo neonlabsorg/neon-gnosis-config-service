@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  nginx:
+    container_name: scnginx
+  web:
+    volumes:
+      - "${DOCKER_WEB_VOLUME}"
+
+networks: 
+  default: 
+    external: 
+      name: "${DOCKER_NETWORK_NAME}"

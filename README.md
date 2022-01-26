@@ -2,7 +2,7 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/gnosis/safe-config-service/badge.svg)](https://coveralls.io/github/gnosis/safe-config-service)
 
-The `safe-config-service` is a service that provides configuration information in the context of the Safe clients environment (eg.: list of available safe apps).
+The `safe-config-service` is a service that provides configuration information in the context of the Safe clients environment (eg.: list of available safe apps and chain metadata).
 
 ## Requirements
 
@@ -10,9 +10,6 @@ The `safe-config-service` is a service that provides configuration information i
 - Python 3
 
 ## Setup
-
-The service uses Gunicorn+Nginx as a connection proxy, Django as the main application layer and PostgreSQL as a relational database. All these services are provided with Docker images that can be started using the provided `docker-compose` (local setup of the services is out of scope for this document).
-
 
 ### 1. Configuration
 
@@ -22,12 +19,20 @@ The environment variables are set via the `.env` file. The configuration in `.en
 cp .env.example .env
 ```
 
-Some variables are required to be set before running the application: `SECRET_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`.
+**Important:** Some variables are required to be set before running the application: `SECRET_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`.
 They can be set either locally on your environment or (as a provided example) by uncommenting these variables from the `.env` file.
 
-### 2. Service deployment/development
+### 2. Running the service image
 
-#### a) with Django
+The project relies on `nginx` and `postgres` services. If you are running this locally this is already set in the `docker-compose.yml` file:
+
+```shell
+docker compose up
+```
+
+The service will then be available under `localhost:$NGINX_HOST_PORT`.
+
+## Development
 
 If you wish to develop locally without running an image for the Django service you can do the following:
 
@@ -49,16 +54,15 @@ source .env
 You can also run the bundled Postrges image with Docker.
    
 ```shell
-docker-compose up -d db # postgres will list on port $POSTGRES_PORT
+docker-compose up -d db # postgres will be listening on port $POSTGRES_PORT
 ```
 
-4. Launch the django app:
+4. Launch the service:
 
 ```shell
 python src/manage.py runserver
 ```
 
----
 
 #### b) with Docker
 
@@ -75,10 +79,24 @@ cp docker-compose.override.yml.example docker-compose.override.yml
 DOCKER_WEB_VOLUME=.:/app
 ```
 
+You need to configure the network that you want to use also. You can create it manually by running this command:
+```cmd
+docker network create moonbase-net # or whatever name than you want
+```
+
+After that edit the env file.
+```dotenv
+DOCKER_NETWORK_NAME=moonbase-net
+```
+
 3. Launch images
 
 ```shell
-docker-compose up -d
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+or 
+```shell
+./run up
 ```
 
 This will start the Nginx proxy server, the `safe-config-service` and a postgres database. Nginx exposes the port `8080` to the host which is the port used to interact with the application.
@@ -95,6 +113,12 @@ Example: if you want to issue a command to the image which is running the Django
 ./run manage <django-command>
 ```
 
+5. If it's the first time that you build the container it's probable that there is a need to load the chain's information into the database.
+
+```shell
+./run loadchain
+```
+
 ## Development Tools
 
 The project uses a variety of tools to make sure that the styling, health and correctness are validated on each change.
@@ -106,8 +130,8 @@ pip install -r requirements-dev.txt
 
 ### Testing
 
-Pytest is used to run the available tests in the project. Some of these tests validate the integration with the database
-so having one running is required. From the project root:
+Pytest is used to run the available tests in the project. **Some of these tests validate the integration with the database
+so having one running is required** (you can have one running in the background with `docker compose up -d db`). From the project root:
 
 ```shell
 pytest src
